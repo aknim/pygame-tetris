@@ -9,6 +9,7 @@ pygame.init()
 WIDTH, HEIGHT = 300, 600 # Tetris playfield size
 GRID_SIZE = 30 # Size of each square in the grid
 ROWS, COLS = HEIGHT // GRID_SIZE, WIDTH // GRID_SIZE
+grid = [[0 for _ in range(COLS)] for _ in range(ROWS)]
 
 # Colors
 BLACK = (0, 0, 0)
@@ -19,6 +20,13 @@ GRAY = (128, 128, 128)
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('Tetris')
 running = True
+
+# Intialize the clock
+clock = pygame.time.Clock()
+fall_speed = 500 # Speed in milliseconds for piece to move down
+
+# Keep track of time elapsed
+last_fall_time = pygame.time.get_ticks()
 
 # Tetromino shapes
 SHAPES = [
@@ -87,11 +95,29 @@ def create_tetromino():
     shape_index = random.randint(0, len(SHAPES) - 1) 
     return Tetromino(shape_index)
 
+def check_collision(tetromino, grid, offset=(0, 0)):
+    offset_x, offset_y = offset
+    for y, row in enumerate(tetromino.shape):
+        for x, cell in enumerate(row):
+            if cell:
+                grid_x = tetromino.x + x + offset_x
+                grid_y = tetromino.y + y + offset_y
+                # Check boundaries (left, right, bottom)
+                if grid_x < 0 or grid_x >= COLS or grid_y >= ROWS-1:
+                    print(grid_x, grid_y)
+                    return True
+                # Check if the tetromino overlaps with any locked cells
+                if grid_y >= 0 and grid[grid_y][grid_x]:
+                    return True
+    return False
+
 # Initialize the current Tetromino
 current_tetromino = create_tetromino()
 
 # Main game loop
 while running:
+    current_time = pygame.time.get_ticks()
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -115,10 +141,16 @@ while running:
                 ((current_tetromino.x + x) * GRID_SIZE,
                  (current_tetromino.y + y) * GRID_SIZE,
                  GRID_SIZE, GRID_SIZE))
-    # input()
+    
+    # Check if it's time to move the piece down
+    if current_time - last_fall_time > fall_speed:
+        if not check_collision(current_tetromino, grid, offset=(0, 0)):
+            current_tetromino.y += 1 # Move piece down if no collision
+        last_fall_time = current_time
 
     # Refresh display
     pygame.display.flip()
+    clock.tick(60) 
 
     # Fill the screen
     screen.fill(BLACK)
