@@ -85,10 +85,22 @@ class Tetromino:
         self.x = COLS // 2 - len(self.shape[0]) // 2 
         self.y = 0
 
-    def rotate(self):
+    def rotate(self, dxn=1):
         # self.rotation = (self.rotation + 1) % len(self.shapes)
         #self.shape = SHAPES[self.rotation]
-        self.shape = [list(row) for row in zip(*self.shape[::-1])]
+        if dxn:
+            print(dxn, "=1")
+            print("before:", self.shape)
+            self.shape = [list(row) for row in zip(*self.shape[::-1])]
+            print("after:", self.shape)
+        else:
+            print(dxn, "=0")
+            print("before: ",self.shape)
+            self.shape = [list(row) for row in zip(*self.shape)][::-1]
+            print("after: ", self.shape)
+        print("exiting")
+
+    
 
 # Function to create a new random Tetromino
 def create_tetromino():
@@ -103,13 +115,28 @@ def check_collision(tetromino, grid, offset=(0, 0)):
                 grid_x = tetromino.x + x + offset_x
                 grid_y = tetromino.y + y + offset_y
                 # Check boundaries (left, right, bottom)
-                if grid_x < 0 or grid_x >= COLS or grid_y >= ROWS-1:
-                    print(grid_x, grid_y)
+                if grid_x < 0 or grid_x >= COLS or grid_y >= ROWS:
                     return True
                 # Check if the tetromino overlaps with any locked cells
                 if grid_y >= 0 and grid[grid_y][grid_x]:
                     return True
     return False
+
+def lock_piece(tetromino, grid):
+    for y, row in enumerate(tetromino.shape):
+        for x, cell in enumerate(row):
+            if cell:
+                grid[tetromino.y + y][tetromino.x + x] = 1
+
+def clear_lines(grid):
+    new_grid = [row for row in grid if any(cell == 0 for cell in row)]
+    cleared_lines = ROWS - len(new_grid)
+
+    # Add empty rows at the top to fill the cleared space
+    for _ in range(cleared_lines):
+        new_grid.insert(0, [0] * COLS)
+
+    return new_grid, cleared_lines
 
 # Initialize the current Tetromino
 current_tetromino = create_tetromino()
@@ -122,20 +149,20 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT:
+            if event.key == pygame.K_LEFT and not check_collision(current_tetromino, grid, offset=(-1, 0)):
                 current_tetromino.x -= 1 # Move left
-            elif event.key == pygame.K_RIGHT:
+            elif event.key == pygame.K_RIGHT and not check_collision(current_tetromino, grid, offset=(1, 0)):
                 current_tetromino.x += 1 # Move right
-            elif event.key == pygame.K_DOWN:
+            elif event.key == pygame.K_DOWN and not check_collision(current_tetromino, grid, offset=(0, 1)):
                 current_tetromino.y += 1 # Move down
             elif event.key == pygame.K_UP:
                 current_tetromino.rotate() # Rotate the piece
+                if check_collision(current_tetromino, grid, offset=(0, 0)):
+                    current_tetromino.rotate(dxn=0)
     
     # Render the current Tetromino
     for y, row in enumerate(current_tetromino.shape): # index, val
-        # print(current_tetromino.rotation, y, row)
         for x, cell in enumerate(row): # index, val
-            # print("r, x, ce",row, x, cell)
             if cell:
                 pygame.draw.rect(screen, current_tetromino.color,
                 ((current_tetromino.x + x) * GRID_SIZE,
@@ -144,7 +171,7 @@ while running:
     
     # Check if it's time to move the piece down
     if current_time - last_fall_time > fall_speed:
-        if not check_collision(current_tetromino, grid, offset=(0, 0)):
+        if not check_collision(current_tetromino, grid, offset=(0, 1)):
             current_tetromino.y += 1 # Move piece down if no collision
         last_fall_time = current_time
 
