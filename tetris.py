@@ -4,6 +4,8 @@ import random
 
 # Initialize Pygame
 pygame.init()
+pygame.font.init()
+font = pygame.font.Font(None, 36)
 
 # Game constants
 WIDTH, HEIGHT = 300, 600 # Tetris playfield size
@@ -27,6 +29,9 @@ fall_speed = 500 # Speed in milliseconds for piece to move down
 
 # Keep track of time elapsed
 last_fall_time = pygame.time.get_ticks()
+
+score = 0
+add_score = 0
 
 # Tetromino shapes
 SHAPES = [
@@ -100,6 +105,24 @@ class Tetromino:
             self.shape = [list(row) for row in zip(*self.shape)][::-1]
 
     
+def calculate_score(lines_cleared):
+    global score, add_score
+    if lines_cleared == 1:
+        add_score = 40
+    elif lines_cleared == 2:
+        add_score = 100
+    elif lines_cleared == 3:
+        add_score = 300
+    elif lines_cleared == 4: # "Tetris"
+        add_score = 1200
+    score += add_score
+
+
+def draw_score(screen, score):
+    score_surface = font.render(f"Score: {score}", True, (255, 255, 255))
+    screen.blit(score_surface, (10, 10))
+
+
 
 # Function to create a new random Tetromino
 def create_tetromino():
@@ -132,6 +155,7 @@ def lock_piece(tetromino, grid):
 def clear_lines(grid):
     new_grid = [row for row in grid if any(cell == 0 for cell in row)]
     ones = [y for y in range(ROWS) if not any(cell == 0 for cell in grid[y])]
+    calculate_score(len(ones))
     if ones:
         blink_lines(grid, ones)
     cleared_lines = ROWS - len(new_grid)
@@ -144,8 +168,10 @@ def clear_lines(grid):
 
 def blink_lines(grid, ones, color=len(COLORS)-2):
     """Temporarily highlight full lines before clearing them."""
+    global add_score, font
     for _ in range(3): # Number of blinks
         for y in ones:
+            score_y = y
             grid[y] = [color] * COLS # Set the full line to the blinking color
         for row in range(ROWS):
             for col in range(COLS):
@@ -155,6 +181,8 @@ def blink_lines(grid, ones, color=len(COLORS)-2):
                     ((col) * GRID_SIZE,
                     (row) * GRID_SIZE,
                     GRID_SIZE, GRID_SIZE))
+        score_surface = font.render(f"+{add_score}", True, (255, 255, 255))
+        screen.blit(score_surface, (score_y, 50))
         pygame.display.update()
         pygame.time.delay(150) # Delay in milliseconds
         
@@ -171,6 +199,8 @@ def blink_lines(grid, ones, color=len(COLORS)-2):
                     GRID_SIZE, GRID_SIZE))
         pygame.display.update()
         pygame.time.delay(150) # Delay in milliseconds
+
+    add_score = 0
 
 
 
@@ -214,6 +244,7 @@ while running:
         else:
             # Lock if collision detected
             grid, lines_cleared = lock_piece(current_tetromino, grid)
+            
             # Spawn a new piece
             current_tetromino = create_tetromino()
             # End game condition
@@ -221,6 +252,7 @@ while running:
                 running = False
         last_fall_time = current_time
 
+    draw_score(screen, score)
     # Refresh display
     pygame.display.flip()
     clock.tick(60) 
