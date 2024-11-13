@@ -26,12 +26,17 @@ running = True
 # Intialize the clock
 clock = pygame.time.Clock()
 fall_speed = 500 # Speed in milliseconds for piece to move down
+ghost_speed = 500
 
 # Keep track of time elapsed
 last_fall_time = pygame.time.get_ticks()
+ghost_last_drop_time = pygame.time.get_ticks()
 
 score = 0
 add_score = 0
+lines_cleared_total = 0
+level = 1
+
 
 # Tetromino shapes
 SHAPES = [
@@ -106,22 +111,34 @@ class Tetromino:
 
     
 def calculate_score(lines_cleared):
-    global score, add_score
+    global score, add_score, level, lines_cleared_total, fall_speed
     if lines_cleared == 1:
-        add_score = 40
+        add_score = 40 * level
     elif lines_cleared == 2:
-        add_score = 100
+        add_score = 100 * level
     elif lines_cleared == 3:
-        add_score = 300
+        add_score = 300 * level
     elif lines_cleared == 4: # "Tetris"
-        add_score = 1200
+        add_score = 1200 * level
     score += add_score
+    lines_cleared_total += lines_cleared
+
+    # Increase level after every 10 lines cleared
+    if lines_cleared_total >= level * 2:
+        level += 1
+        fall_speed = get_game_speed(level)
 
 
 def draw_score(screen, score):
     score_surface = font.render(f"Score: {score}", True, (255, 255, 255))
+    level_surface = font.render(f"Level: {level}", True, (255, 255, 255))
+    # speed_surface = font.render(f"Speed: {fall_speed}", True, (255, 255, 255))
     screen.blit(score_surface, (10, 10))
+    screen.blit(level_surface, (10, 40))
+    # screen.blit(speed_surface, (10, 80))
 
+def get_game_speed(level):
+    return max(50, fall_speed - (level - 1) * 40) # Increase speed as level increases
 
 
 # Function to create a new random Tetromino
@@ -206,6 +223,7 @@ def blink_lines(grid, ones, color=len(COLORS)-2):
 
 # Initialize the current Tetromino
 current_tetromino = create_tetromino()
+ghost_piece = create_tetromino()
 
 # Main game loop
 while running:
@@ -236,7 +254,20 @@ while running:
                 ((current_tetromino.x + x) * GRID_SIZE,
                  (current_tetromino.y + y) * GRID_SIZE,
                  GRID_SIZE, GRID_SIZE))
+
+    # for y, row in enumerate(ghost_piece.shape): # index, val
+    #     for x, cell in enumerate(row): # index, val
+    #         if cell:
+    #             pygame.draw.rect(screen, ghost_piece.color,
+    #             ((ghost_piece.x + x) * GRID_SIZE,
+    #              (ghost_piece.y + y) * GRID_SIZE,
+    #              GRID_SIZE, GRID_SIZE))
     
+    if current_time - ghost_last_drop_time >= ghost_speed:
+        ghost_last_drop_time = current_time
+        ghost_piece.y += 1
+        
+
     # Check if it's time to move the piece down
     if current_time - last_fall_time > fall_speed:
         if not check_collision(current_tetromino, grid, offset=(0, 1)):
@@ -247,6 +278,7 @@ while running:
             
             # Spawn a new piece
             current_tetromino = create_tetromino()
+            ghost_piece.y = current_tetromino.y
             # End game condition
             if check_collision(current_tetromino, grid):
                 running = False
@@ -269,6 +301,7 @@ while running:
                 ((col) * GRID_SIZE,
                  (row) * GRID_SIZE,
                  GRID_SIZE, GRID_SIZE))
+
 
     # Update the display
     pygame.display.flip()
